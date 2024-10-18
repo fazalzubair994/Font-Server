@@ -10,8 +10,13 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS for all routes
 app.use(cors());
 
-// Serve fonts from the 'fonts' directory
-app.use("/get-font", express.static(path.join(__dirname, "fonts")));
+app.use("/get-font", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Adjust this to allow specific domains in production
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+}, express.static(path.join(__dirname, "fonts")));
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
