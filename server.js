@@ -16,7 +16,13 @@ app.use("/get-font", express.static(path.join(__dirname, "fonts")));
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "fonts"); // Save files to 'fonts' directory
+    const dir = path.join(__dirname, "fonts");
+
+    // Check if the 'fonts' directory exists, if not create it
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    cb(null, dir); // Save files to 'fonts' directory
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // Use the original file name
@@ -35,11 +41,11 @@ app.post("/add-font", upload.single("font"), (req, res) => {
 // Route to delete a font
 app.delete("/delete-font/:fontName", (req, res) => {
   const fontName = req.params.fontName;
-  const fontPath = path.join(__dirname, "fonts", fontName);
+  const fontPath = path.join(__dirname, "fonts", fontName); // Ensure correct path resolution
 
   fs.unlink(fontPath, (err) => {
     if (err) {
-      return res.status(404).send("Font not found.");
+      return res.status(404).send(`Font not found: ${fontName}`);
     }
     res.send(`Font ${fontName} deleted successfully.`);
   });
@@ -47,16 +53,56 @@ app.delete("/delete-font/:fontName", (req, res) => {
 
 // Route to list available fonts
 app.get("/fonts", (req, res) => {
-  fs.readdir(path.join(__dirname, "fonts"), (err, files) => {
+  const fontsDir = path.join(__dirname, "fonts");
+
+  // Check if fonts directory exists
+  if (!fs.existsSync(fontsDir)) {
+    return res.status(404).send("Fonts directory not found.");
+  }
+
+  fs.readdir(fontsDir, (err, files) => {
     if (err) {
       return res.status(500).send("Error reading fonts directory.");
     }
+
     // Filter only font files (optional)
     const fontFiles = files.filter((file) =>
       /\.(ttf|woff|woff2|otf)$/.test(file)
     );
     res.json(fontFiles);
   });
+});
+
+// Route to provide information about all available routes
+app.get("/routes-info", (req, res) => {
+  const routesInfo = [
+    {
+      route: "/get-font/{fontName}",
+      method: "GET",
+      description: "Retrieve a font file by its name from the server.",
+    },
+    {
+      route: "/add-font",
+      method: "POST",
+      description:
+        "Upload a new font file to the server. (Multipart file upload required).",
+      example:
+        "curl -X POST -F 'font=@path/to/font.ttf' http://localhost:3000/add-font",
+    },
+    {
+      route: "/delete-font/{fontName}",
+      method: "DELETE",
+      description: "Delete a font by its name from the server.",
+      example: "curl -X DELETE http://localhost:3000/delete-font/fontName.ttf",
+    },
+    {
+      route: "/fonts",
+      method: "GET",
+      description: "List all available font files on the server.",
+    },
+  ];
+
+  res.json(routesInfo);
 });
 
 // Start the server
